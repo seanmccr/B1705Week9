@@ -53,6 +53,7 @@ normalise<- function(x) {
 
 df_norm <- as.data.frame(lapply(df, normalise)) # create new dataframe
 
+# ---- Save as template ----
 ##### 2.3. Splitting into Training and Testing Sets -----
 
 # first, calculate what number represents 80% of the dataset
@@ -67,6 +68,8 @@ train_data <- df_norm[train_indices, ]
 test_data <- df_norm[-train_indices, ]
 
 ##### 2.4. Specify the Model -----
+
+mvp_votes ~ players_age + team_experience + average_points + average_assists + average_rebounds + player_position + injury_history + free_throw_accuracy
 
 ##### 2.5. Run Linear Regression Model -----
 # fit model
@@ -116,15 +119,67 @@ ggplot(test_data, aes(x = mvp_votes, y = predicted)) +
        y = "Predicted Values") +
   theme_minimal()
 
+# ----- Practical -----
+# Loading Data
+rm(list=ls())
+df <- read.csv('https://www.dropbox.com/scl/fi/4huhvcj21dlizwso430ma/wk9_2.csv?rlkey=2f5j7kg68rgkimuduz6j3tm8v&dl=1')
 
+# Normalising
+normalise<- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
 
+df_norm <- as.data.frame(lapply(df, normalise)) 
 
+# Split into Training and Testing Sets 
+# first, calculate what number represents 80% of the dataset
+sample_size <- floor(0.8 * nrow(df_norm))
 
+# then create that number of indices
+train_indices <- sample(seq_len(nrow(df_norm)), size = sample_size)
 
+# create new dataframe by extracting the observations at those rows
+train_data <- df_norm[train_indices, ]
 
+# create another dataframe by extracting the observations that are NOT at those rows.
+test_data <- df_norm[-train_indices, ]
 
+# Specify the Model 
 
+model <- lm(RacePosition ~ CarPerformanceIndex + QualifyingTime + DriverAge + EnginePower + TeamExperience + WeatherCondition + CircuitType + PitStopStrategy, data = train_data[, -ncol(train_data)]) 
+summary(model)
+aic_value <- AIC(model)
+print(aic_value)
 
+# Check Model
+model2 <- lm(RacePosition ~ CarPerformanceIndex + QualifyingTime, data = train_data[, -ncol(train_data)]) 
+summary(model2)
+aic_value <- AIC(model2)
+print(aic_value)
 
+# Apply Testing Data
+predictions <- predict(model2, test_data)
 
+# Visualise: Finish
+library(ggplot2)
 
+plot(test_data$mvp_votes, predictions, xlab = "Actual MVP Votes", ylab = "Predicted MVP Votes", main = "Actual vs. Predicted MVP Votes")
+abline(0, 1, col = "red")
+
+residuals <- test_data$mvp_votes - predictions
+
+# Residual Plot
+plot(test_data$mvp_votes, residuals, main = "Residuals vs. Actual Values",
+     xlab = "Actual Values", ylab = "Residuals", pch = 4)
+abline(h = 0, col = "red")  # add horizontal line at 0
+
+test_data$predicted <- predictions
+
+# Scatter plot
+ggplot(test_data, aes(x = mvp_votes, y = predicted)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +
+  labs(title = "Actual vs. Predicted Values",
+       x = "Actual Values",
+       y = "Predicted Values") +
+  theme_minimal()

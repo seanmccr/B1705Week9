@@ -221,6 +221,46 @@ print(paste("AUC value:", auc_value))
 
 # The AUC value helps to interpret the model's ability to discriminate between classes.
 
+##### 3.10. Practice Practical #####
+rm(list=ls())
+df <- read.csv('https://www.dropbox.com/scl/fi/4huhvcj21dlizwso430ma/wk9_2.csv?rlkey=2f5j7kg68rgkimuduz6j3tm8v&dl=1')
+
+df$PodiumFinish<- as.factor(df$PodiumFinish)
+
+normalise_min_max <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+predictor_columns <- c('DriverAge', 'CarPerformanceIndex', 'QualifyingTime', 'TeamExperience', 'EnginePower', 'WeatherCondition', 'CircuitType', 'PitStopStrategy')
+df[predictor_columns] <- as.data.frame(lapply(df[predictor_columns], normalise_min_max))
+
+set.seed(123)
+sample_size <- floor(0.8 * nrow(df))  # 80% for training
+train_indices <- sample(seq_len(nrow(df)), size = sample_size)
+train_data <- df[train_indices, ]
+test_data <- df[-train_indices, ]
+
+model <- glm(PodiumFinish ~ DriverAge + CarPerformanceIndex + QualifyingTime + TeamExperience + EnginePower + WeatherCondition + CircuitType + PitStopStrategy, 
+             data = train_data, family = binomial())
+
+summary(model)
+
+predicted_probabilities <- predict(model, newdata = test_data, type = "response")
+predicted_classes <- ifelse(predicted_probabilities > 0.5, 1, 0)
+
+confusion_matrix <- table(Predicted = predicted_classes, Actual = test_data$PodiumFinish)
+print(confusion_matrix)
+
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+print(paste("Accuracy:", accuracy))
+
+library(pROC)
+
+roc_curve <- roc(test_data$PodiumFinish, predicted_probabilities)
+plot(roc_curve)
+
+auc_value <- auc(roc_curve)
+print(paste("AUC value:", auc_value))
+
 # ----- 4. Decision Trees: Demonstration -----
 ##### 4.1. Load Data, Create Factors -----
 rm(list=ls())
@@ -254,7 +294,7 @@ test_data <- df[-training_indices, ] # create testing data
 ##### 4.3. Fitting and Inspecting Model -----
 # Fit the model
 single_tree_model <- rpart(top_player ~ ., data = train_data, method = "class")
-
+# Decision Trees can be used for regression models too
 rpart.plot(single_tree_model, main="Is player a 'top' player?", extra=104)
 
 ##### 4.4. Predict and Evaluate -----
